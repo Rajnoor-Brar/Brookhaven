@@ -66,3 +66,12 @@ vcpkg_installed/
 # test output & cache
 Testing/
 .cache/
+
+# Heimdall (hep setup): what the runner and the build make
+records/
+logs/
+results/
+reports/*
+__pycache__/
+!/Makefile
+# /Heimdall
