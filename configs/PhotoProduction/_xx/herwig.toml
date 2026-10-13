@@ -1,0 +1,52 @@
+# herwig.toml — Herwig 7 through the chain (rework v2 schema, docs/04_Config_Reference.md).
+#
+#   hep run PhotoProduction/herwig             ep NC DIS at 18x275 → rivet: a chain check (P4 S2)
+#   hep run PhotoProduction/herwig export      a custom tool given Herwig's run file, Herwig not run
+#
+# dis_ep.herwig.in is DIS, not photoproduction: it checks the tool folder (read cached as a
+# prepare step, run into the FIFO, the count check), not physics against eic.toml.
+
+[run]
+serial        = 5
+name          = "herwig"
+project       = "PhotoProduction"
+run           = "single"
+events        = 2_000
+threads       = 1
+
+[cfgs.single]
+description = "Herwig ep DIS at 18x275, analysed by Rivet"
+chain       = [["herwig", "rivet"], "yd2rt"]
+
+[cfgs.export]
+description = "A custom tool asks for herwig_run: Herwig's read runs once (cached), the tool gets the path"
+chain       = ["probe"]
+generate_cards = ["herwig:run"]   # their cards in the context file
+
+[tools.herwig]
+card        = "dis_ep.herwig.in"
+output      = "events.hepmc"
+
+[tools.rivet]
+input       = "herwig"
+analyses    = ["photo_eic"]
+output      = "photo.yoda"
+
+[tools.yd2rt]
+input       = "rivet"
+output      = "photo.root"
+
+[tools.probe]                     # stands in for an integrated program that runs Herwig itself
+uses        = "exec"
+executable  = "/bin/ls"
+arguments   = ["-l", "{context:herwig.run}"]
+
+[quantities.energies]
+fixed  = "18x275"
+points = [
+  { tag = "18x275", value = [275, 18], label = "18x275 GeV" },
+  { tag = "27x920", value = [920, 27.5], label = "27x920 GeV" },
+]
+
+[plot]
+formats = ["png"]

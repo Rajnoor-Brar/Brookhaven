@@ -1,0 +1,144 @@
+# zeus_validation.toml — HERA validation of the photoproduction card against ZEUS 2012
+# (rework v2 schema, docs/04_Config_Reference.md).
+#
+#   hep run PhotoProduction/zeus_validation          PDF comparison at HERA kinematics
+#   hep run PhotoProduction/zeus_validation ptref    MPI pT0Ref scan, 2.8–3.4 GeV
+#   hep run PhotoProduction/zeus_validation mpi      MPI on vs off
+#
+# The base card is photo_zs.cmnd, rebuilt from the nine cards of the 2025 ZEUS study
+# (Photo-Production/Backups/v23107_masterwork/daebrns/zeus_2012/): they were one card copied nine
+# times with one line changed, and that line is a quantity here — zeus_pdf/* → pdf, zeus_ptref/ptref*
+# → pt0ref, zeus_ptref/nompi → mpi. Event counts follow them: 1M for the PDFs, 200k for the MPI scans.
+#
+# Translated from the v1 schema-2 file (git show rework/v1-final:configs/PhotoProduction/
+# zeus_validation.toml). v1 fixed the beams in [beams] (ids [2212, 11], energies [920, 27.5]) and
+# pinned the lepton to e+ through [static.use] beams = "ep"; here both are static quantities.
+#
+# The chain, the quantities it shares with eic.toml and the common plot keys are common.toml's
+# (imported, V94); this file says its card, analysis and shards, and what is its own: the
+# configurations, the statics, the PDFs (Pythia's own sets), the backends and ZEUS's data map.
+
+[file]
+import = ["common"]
+
+[file.vars]
+card     = "photo_zs.cmnd"           # rebuilt from the 2025 study's nine cards (above)
+analysis = "ZEUS_2012_I1116258"      # Rivet's own
+product  = "zeus"
+shards   = 6
+
+[run]
+serial        = 2
+name          = "zeus"
+project       = "PhotoProduction"
+run           = "single"
+sweep_runs    = ["default3", "default4"]
+seed = "random"
+parallelism   = 2
+threads       = 6
+chain         = [["pythia", "rivet"], "yd2rt"]   # every configuration's chain (V99)
+
+[cfgs.default]
+events      = 25_000_000
+description = "Proton-PDF comparison at 27.5x920 GeV e+p against ZEUS 2012 (built-in Rivet analysis)"
+vary        = ["pdf"]
+
+# The same comparison at more events: each is `default` with its own folder and event count.
+[cfgs.default01]
+extends     = "default"
+folder      = "PDFs_010M"
+events      = 10_000_000
+
+[cfgs.default0]
+extends     = "default"
+folder      = "PDFs_025M"
+events      = 25_000_000
+
+[cfgs.default1]
+extends     = "default"
+folder      = "PDFs_050M"
+events      = 50_000_000
+
+[cfgs.default2]
+extends     = "default"
+folder      = "PDFs_100M"
+events      = 100_000_000
+
+[cfgs.default3]
+extends     = "default"
+folder      = "PDFs_150M"
+events      = 150_000_000
+
+[cfgs.default4]
+extends     = "default"
+folder      = "PDFs_200M"
+events      = 200_000_000
+
+[cfgs.ptref]
+description = "MPI pT0Ref scan, 2.8–3.4 GeV, at 27.5x920 GeV e+p (the zeus_ptref/ptref*.cmnd set)"
+events      = 200_000_000
+vary        = ["pt0ref"]
+
+[cfgs.mpi]
+description = "Multiparton interactions on vs off, at the static pT0Ref (zeus_ptref/nompi.cmnd)"
+events      = 200_000_000
+vary        = ["mpi"]
+
+[cfgs.single]
+events      = 25_000_000
+description = "One run at the static point"
+
+[quantities.pdf]                     # Pythia's own sets for the LO and NLO NNPDF/MSTW (common.toml's: LHAPDF's)
+# values = ["LHAPDF6:MSTW2008lo68cl", "LHAPDF6:NNPDF23_lo_as_0130_qed", "LHAPDF6:NNPDF23_nlo_as_0119_qed", "LHAPDF6:PDF4LHC21_40_pdfas"]
+
+# [quantities.pdf]
+# values = ["LHAPDF6:MSTW2008lo68cl", "LHAPDF6:MSTW2008lo90cl",
+#           "LHAPDF6:MSTW2008lo68cl_nf3", "LHAPDF6:MSTW2008lo90cl_nf3",
+#           "LHAPDF6:MSTW2008lo68cl_nf4", "LHAPDF6:MSTW2008lo90cl_nf4",
+#           "LHAPDF6:MSTW2008lo68cl_nf4as5", "LHAPDF6:MSTW2008lo90cl_nf4as5",
+#           5]                                     # Pythia's own set 5: MSTW 2008 LO, central member
+# tags   = ["lo68", "lo90", "lo68_nf3", "lo90_nf3", "lo68_nf4", "lo90_nf4", "lo68_nf4as5", "lo90_nf4as5", "pythia5"]
+# labels = ["MSTW2008lo68cl", "MSTW2008lo90cl", "MSTW2008lo68cl_nf3", "MSTW2008lo90cl_nf3",
+#           "MSTW2008lo68cl_nf4", "MSTW2008lo90cl_nf4", "MSTW2008lo68cl_nf4as5", "MSTW2008lo90cl_nf4as5",
+#           "Pythia set 5 (MSTW 2008 LO)"]
+points = [
+  { tag = "MSTW08lo", value = 5, label = "MSTW 2008 LO" },
+  { tag = "NNPDF23lo", value = 13, label = "NNPDF 2.3 QCD+QED LO" },
+  { tag = "NNPDF23nlo", value = 15, label = "NNPDF 2.3 QCD+QED NLO" },
+  { tag = "PDF4LHC21", value = "LHAPDF6:PDF4LHC21_40_pdfas", label = "PDF4LHC21_40_pdfas" },
+]
+
+[plot]                               # over common.toml's
+backend = ["mpl", "yoda"]
+
+# v1 drew Rivet's own reference data (rivet_refs = true): `rivet:` names that file, which every
+# Rivet installation ships (datasets/ is not in git). The map is the identity: explicit, never matched
+# by name (00/B5, L18).
+[plot.data]
+file   = "rivet:ZEUS_2012_I1116258"     # Rivet's own ZEUS 2012 tables (the same numbers as datasets/zeus_eic.yoda)
+legend = "Data"
+
+[plot.style]
+legend.position = "best"
+ratio.range     = [0.5, 1.5]
+ratio.limits    = [0.5, 1.5]
+
+[plot.data.map]
+"d01-x01-y01" = "/REF/ZEUS_2012_I1116258/d01-x01-y01"   # ET, kT, all eta
+"d02-x01-y01" = "/REF/ZEUS_2012_I1116258/d02-x01-y01"   # eta, kT, ET > ETMIN
+"d03-x01-y01" = "/REF/ZEUS_2012_I1116258/d03-x01-y01"   # eta, kT, ET > ETMIN2
+"d04-x01-y01" = "/REF/ZEUS_2012_I1116258/d04-x01-y01"   # ET, kT, eta < 0
+"d05-x01-y01" = "/REF/ZEUS_2012_I1116258/d05-x01-y01"   # ET, kT, 0 < eta < 1
+"d06-x01-y01" = "/REF/ZEUS_2012_I1116258/d06-x01-y01"   # ET, kT, 1 < eta < 1.5
+"d07-x01-y01" = "/REF/ZEUS_2012_I1116258/d07-x01-y01"   # ET, kT, 1.5 < eta < 2
+"d08-x01-y01" = "/REF/ZEUS_2012_I1116258/d08-x01-y01"   # ET, kT, eta > 3
+"d09-x01-y01" = "/REF/ZEUS_2012_I1116258/d09-x01-y01"   # ET, anti-kT, all eta
+"d10-x01-y01" = "/REF/ZEUS_2012_I1116258/d10-x01-y01"   # ET, SISCone, all eta
+"d11-x01-y01" = "/REF/ZEUS_2012_I1116258/d11-x01-y01"   # eta, anti-kT
+"d12-x01-y01" = "/REF/ZEUS_2012_I1116258/d12-x01-y01"   # eta, SISCone
+
+[quantities.energies]                # the imported quantity, fixed here
+fixed = "27x920"
+
+[quantities.pt0ref]                # the imported quantity, fixed here
+fixed = "pt32"

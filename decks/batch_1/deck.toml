@@ -1,0 +1,16 @@
+# reports/batch_1_deck/deck.toml: batch_1 rebuilt from the result folders (docs/03_Plots.md §11).
+
+[blocks.zeus]
+from    = "PhotoProduction/zeus"
+folders = ["01_PDFs_010M", "01_PDFs_025M", "01_PDFs_050M", "03_PDFs_150M", "03_PDFs_200M"]
+pages   = ["d01-x01-y01", "d02-x01-y01", "d11-x01-y01", "d12-x01-y01"]
+backend = ["root", "mpl"]            # 03_PDFs_150M and 03_PDFs_200M were drawn by mpl only
+extra   = "extras/zeus_{short}_AB.png"
+title   = "ZEUS {short} · PDFs"
+
+[blocks.eic]
+from    = "PhotoProduction/eic"
+folders = ["01_Energies_01M", "01_Energies_10M", "01_Energies_50M"]
+pages   = ["d01-x01-y01", "d02-x01-y01", "d15-x01-y01", "d16-x01-y01", "d17-x01-y01"]
+extra   = "extras/eic_{short}_AB.png"
+title   = "EIC {short} · Energies"

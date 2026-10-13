@@ -1,0 +1,49 @@
+# madgraph.toml — MadGraph → LHE → Pythia shower → Rivet (rework v2 schema, docs/03_User_Guide.md §4.10).
+#
+#   hep run PhotoProduction/madgraph          ep NC DIS at 18x275: a chain check (P4 S3)
+#
+# Every hop that crosses a group is a file: the LHE must be complete before Pythia opens it. The
+# process directory is built once per proc card (.cache/madgraph/); each point is one launch.
+
+[run]
+serial        = 7
+name          = "madgraph"
+project       = "PhotoProduction"
+run           = "single"
+events        = 1_000
+threads       = 1                   # Pythia reads one LHE: one instance (no PythiaParallel split)
+
+[cfgs.single]
+description = "MadGraph ep DIS at 18x275, showered by Pythia, analysed by Rivet"
+chain       = ["madgraph", ["shower", "rivet"], "yd2rt"]
+
+[tools.madgraph]
+card        = "dis_ep.proc_card.mg5"
+output      = "unweighted.lhe"
+keep        = false              # a scratch file of the point, not a product
+
+[tools.shower]
+uses        = "pythia"
+card        = "shower_lhe.cmnd"
+input       = "madgraph"
+output      = "events.hepmc"
+
+[tools.rivet]
+input       = "shower"
+analyses    = ["photo_eic"]
+output      = "photo.yoda"
+
+[tools.yd2rt]
+input       = "rivet"
+output      = "photo.root"
+
+[quantities.energies]
+to     = { madgraph = true }
+fixed  = "18x275"
+points = [{ tag = "18x275", value = [275, 18] }]
+
+[quantities.beams]
+to     = { madgraph = true }
+fixed  = "pe"
+points = [{ tag = "pe", value = [2212, 11] }]
+

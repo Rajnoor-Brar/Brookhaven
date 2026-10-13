@@ -1,0 +1,44 @@
+# whizard.toml — direct photoproduction at the EIC with Whizard 3 (photo_ep.sin), rework v2 schema.
+#
+#   hep run PhotoProduction/whizard           18x275 e+p, direct only (Whizard has no resolved photon)
+#
+# Its own physics point, not a cross-check of photo_ep.cmnd: the card explains why (L13, D20).
+# Not photo_eic: Whizard's EPA record replaces the lepton with a photon, and DISKinematics needs the
+# scattered lepton. MC_JETS and MC_XS read any record. Whizard writes no σ into its events, so the
+# point's σ is the integration's (its prepare log), and Rivet's normalisation has none to use.
+
+[run]
+serial        = 6
+name          = "whizard"
+project       = "PhotoProduction"
+run           = "single"
+events        = 2_000
+threads       = 1
+
+[cfgs.single]
+description = "Direct photoproduction at 18x275 e+p"
+chain       = [["whizard", "rivet"], "yd2rt"]
+
+[tools.whizard]
+card        = "photo_ep.sin"
+output      = "events.hepmc"
+
+[tools.rivet]
+input       = "whizard"
+analyses    = ["MC_XS", "MC_JETS"]
+output      = "photo.yoda"
+
+[tools.yd2rt]
+input       = "rivet"
+output      = "photo.root"
+
+[quantities.energies]
+fixed  = "18x275"
+points = [{ tag = "18x275", value = [275, 18] }]
+
+[quantities.beams]
+fixed  = "ep"
+points = [{ tag = "ep", value = [2212, -11] }]
+
+[plot]
+formats = ["png"]

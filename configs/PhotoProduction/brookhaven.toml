@@ -1,0 +1,104 @@
+# brookhaven.toml — inclusive-jet photoproduction off protons and nuclei at EIC-like energies:
+# 9 GeV electrons on p, d, ⁴He, ¹⁰⁷Ag and ¹⁹⁷Au (photo_eic.cmnd).
+#
+# The nuclei by the nuclear-PDF route: beam A stays a proton, and the hard process sees the bound
+# nucleon of the nucleus named by `ions` (Pythia's PDF:nPDFBeamA, with EPPS16 NLO and the nucleus's
+# proton/neutron mix, PDF:nPDFSetA = 3 in the card). The free-proton points run with it off
+# (`nuclear`). Not modelled: multiparton interactions with several nucleons, the nuclear breakup,
+# in-medium effects (an eA generator's).
+#
+#   hep run PhotoProduction/brookhaven            the configuration named in [run] (single)
+#   hep run PhotoProduction/brookhaven --plan     look before running
+#
+# The chain, the quantities and the plot keys are common.toml's (imported); this file says its card,
+# analysis and shards, its beams and its own configuration.
+#
+# Beam A's energy is per nucleon (GeV/u); √s below is per electron–nucleon collision, √(4 E_e E_N).
+
+[file]
+import = ["common"]
+
+[file.vars]
+card     = "photo_eic.cmnd"
+analysis = "photo_eic"
+product  = "photo"
+shards   = 10
+
+[run]
+name          = "brookhaven"
+serial        = 2
+project       = "PhotoProduction"
+run           = "single"
+threads       = 12
+chain         = ["inproc", "yd2rt"]
+generate_cards = ["pythia", "rivet"]   # their cards in the context file
+
+[tools.inproc.config]
+engine        = "parallel"    # PythiaParallel as App_Pythia runs it; "serial": one Pythia8::Pythia
+rivet_threads = 12            # Rivets on threads of their own, merged at the end (V34, L29)
+
+[tools.inproc]                # the integrated program (V21, V33)
+uses           = "module"
+executable     = "InprocJets.exe"
+output         = "photo.yoda" # as the imported rivet table's, which yd2rt and merge read
+
+[cfgs.single]
+folder      = "Energies_10M"
+events      = 10_000_000
+description = "Electron–ion comparison: each nucleus at its own beam energy, 9 GeV electrons"
+vary        = [["ions", "energies", "nuclear"]]   # entangled: the n-th of each together
+
+[quantities.energies]                         # [E_A per nucleon, E_e] in GeV: beam A is the proton
+points = [
+  { tag = "9x130", value = [130, 9], label = '9x130 GeV ($\sqrt{s_{eN}}$ = 68.4 GeV)' },
+  { tag = "9x275", value = [275, 9], label = '9x275 GeV ($\sqrt{s_{eN}}$ = 99.5 GeV)' },
+  { tag = "9x130d", value = [130, 9], label = '9x130 GeV ($\sqrt{s_{eN}}$ = 68.4 GeV)' },
+  { tag = "9x166", value = [166, 9], label = '9x166 GeV ($\sqrt{s_{eN}}$ = 77.3 GeV)' },
+  { tag = "9x115", value = [115, 9], label = '9x115 GeV ($\sqrt{s_{eN}}$ = 64.3 GeV)' },
+  { tag = "9x100", value = [100, 9], label = '9x100 GeV ($\sqrt{s_{eN}}$ = 60.0 GeV)' },
+]
+
+[quantities.ions]                             # the nucleus whose bound nucleon beam A is: 100ZZZAAAI
+to     = { pythia = "PDF:nPDFBeamA" }
+points = [
+  { tag = "p", value = 2212, label = "p" },
+  { tag = "p275", value = 2212, label = "p" },
+  { tag = "d", value = 1000010020, label = "d" },
+  { tag = "He4", value = 1000020040, label = "$^{4}$He" },
+  { tag = "Ag107", value = 1000471070, label = "$^{107}$Ag" },
+  { tag = "Au197", value = 1000791970, label = "$^{197}$Au" },
+]
+
+[quantities.nuclear]                          # the nuclear PDF correction: off for the free proton
+to     = { pythia = "PDF:useHardNPDFA" }
+points = [
+  { tag = "free", value = false, label = "free proton" },
+  { tag = "free275", value = false, label = "free proton" },
+  { tag = "npdf", value = true, label = "EPPS16" },
+  { tag = "npdfHe", value = true, label = "EPPS16" },
+  { tag = "npdfAg", value = true, label = "EPPS16" },
+  { tag = "npdfAu", value = true, label = "EPPS16" },
+]
+
+[plot]
+backend = ["root", "yoda", "mpl"]
+formats = ["pdf", "png"]
+
+[plot.style]
+legend.position = "best"
+ratio.range     = [0, 2.5]
+ratio.limits    = [0, 2.5]
+text.legend     = 9
+text.header     = 8
+
+[quantities.pdf]                # the imported quantity, fixed here
+fixed = "NNPDF23lo"
+
+[quantities.pt0ref]                # the imported quantity, fixed here
+fixed = "pt32"
+
+[quantities.mpi]                # the imported quantity, fixed here
+fixed = "mpi"
+
+[quantities.lepton]                # the imported quantity, fixed here
+fixed = "em"

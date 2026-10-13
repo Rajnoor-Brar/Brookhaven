@@ -1,0 +1,152 @@
+# InProcEIC.toml — eic.toml with Pythia and Rivet in one process (InprocJets, V33).
+#
+#   hep run PhotoProduction/InProcEIC                the configuration named in [run] (pdf)
+#   hep run PhotoProduction/InProcEIC energy_pdf     another one
+#   hep run PhotoProduction/InProcEIC radius --plan  look before running
+#
+# The physics is eic.toml's, imported (V94, V95): its statics, quantities, plots and the tools these
+# configurations use (the pythia table's card photo_ep.cmnd, photo_eic, yd2rt, merge), so an edit
+# there is an edit here. Only what differs is written below: the integrated program, the
+# configurations that run it, and the run's own name. Instead of App_Pythia → FIFO → rivet, one
+# program (modules/PhotoProduction/InprocJets.cc) runs PythiaParallel and its Rivets, and hands each
+# event to Rivet as an in-memory HepMC3::GenEvent: no HepMC text, no FIFO (no [prelim] is imported).
+# It gets the pythia table's point card (seeds included) and the rivet table's analyses with their
+# options (radius's R) as standard configurations (04 §9.4); those two tables are configured, never
+# run. Not here: eic's `delphes` chain (it needs the events outside the process) and its own `jets`
+# table (this file's `inproc` is that program, with its Rivet threads).
+#
+# Seeds follow the generator's card, base card, binary, threads and event count (V22): with the same
+# event_count and threads as an eic.toml configuration, a point here and the same point there are the
+# same events.
+#
+# Speed: `rivet_threads` Rivets, each on its own thread, merged at the end (V34); they need the
+# SISCone patch (L29, utils/Env/patches/), without which the program refuses more than one.
+# Measured, 200k events of `single` with start-up: 12 + 1 Rivet 112 s, 12 + 12 Rivets 20.7 s,
+# 10 + 14 19.3 s; eic.toml's chain with 12 + 10 shards 29.0 s.
+#
+# Physics notes (eic.toml's):
+#   * Photon:ProcessType 0 and 1 give identical events with this card; the direct contribution needs
+#     its own card (00/B13), so the `process` configuration is a null comparison.
+#   * The base card's pTHatMin = 6 GeV sits above photo_eic's lowest jet ET bins, which biases them
+#     (00/B27). The `pthatmin` configuration measures that.
+#   * photo_eic's ETMIN/ETMIN2 defaults are 17/21 GeV in the source (its .info still says 5/10).
+
+[file]
+import = [{ from = "eic", only = ["static", "quantities", "plot",
+                                  "tools.pythia", "tools.rivet", "tools.yd2rt", "tools.merge"] }]
+
+[run]
+serial        = 1
+name          = "inproc_eic"
+project       = "PhotoProduction"
+run           = "pdf"
+events        = 1_000_000
+threads       = 12            # Pythia's; as eic.toml, so the same seeds (10 + 14 Rivets is 7% faster)
+chain         = ["inproc", "yd2rt"]   # every configuration's: the integrated program, then eic's yd2rt
+generate_cards = ["pythia", "rivet"]   # their cards in the context file
+
+[tools.inproc.config]
+engine        = "parallel"    # PythiaParallel as App_Pythia runs it; "serial": one Pythia8::Pythia
+rivet_threads = 12            # Rivets on threads of their own, merged at the end (V34, L29)
+
+[cfgs.single]
+description = "One run at the static point, in one process"
+
+[cfgs.pdf]
+serial      = 1
+description = "Proton-PDF comparison at the static beams, in one process"
+vary        = ["pdf"]
+
+[cfgs.energies]
+serial      = 2
+description = "Beam-energy comparison at the static PDF, in one process"
+vary        = ["energies"]
+
+[cfgs.energy_pdf]
+serial      = 3
+description = "Beams x PDF grid: one page per energy, PDF curves on each, in one process"
+vary        = ["energies", "pdf"]
+plot_points = ["energies"]
+
+[cfgs.mpi]
+serial      = 4
+description = "MPI pT0Ref scan at 18x275 with MPI on, in one process"
+vary        = ["pt0ref"]
+fixed       = { energies = "18x275" }
+
+[cfgs.mpi_onoff]
+serial      = 5
+description = "MPI on vs off at 18x275, in one process"
+vary        = ["mpi"]
+fixed       = { energies = "18x275" }
+
+[cfgs.mpi_grid]
+serial      = 6
+description = "pT0Ref x MPI grid: one page per MPI setting, pT0Ref curves on each, in one process"
+vary        = ["pt0ref", "mpi"]
+plot_points = ["mpi"]
+fixed       = { energies = "18x275" }
+
+[cfgs.pthatmin]
+serial      = 7
+description = "Generation-cut stability at the static beams (00/B27), in one process"
+vary        = ["pthatmin"]
+
+[cfgs.process]
+serial      = 8
+description = "Photon:ProcessType 0 vs 1 at 18x275: a null comparison with this card (00/B13), in one process"
+vary        = ["process"]
+fixed       = { energies = "18x275" }
+
+[cfgs.radius]
+serial      = 9
+description = "Jet radius R at 18x275, in one process (the option reaches Rivet through rivet_analyses)"
+vary        = ["radius"]
+fixed       = { energies = "18x275" }
+
+[cfgs.replicas]
+serial      = 10
+description = "Three seed replicas at the static point, merged after them by rivet-merge (post), in one process"
+vary        = ["replica"]
+chain       = ["inproc"]
+post        = ["merge"]       # eic's merge: photo.yoda of every point → one YODA with their statistics
+
+[tools.inproc]                # the integrated program (V21, V33)
+uses           = "module"
+executable     = "InprocJets.exe"
+output         = "photo.yoda" # as the imported rivet table's, which yd2rt and merge read
+
+# ── its own quantities: what its configurations vary and eic's do not (from eic.toml) ────────────
+
+[quantities.pthatmin]
+to     = { pythia = "PhaseSpace:pTHatMin" }
+points = [
+  { tag = "pth2", value = 2.0, label = '$\hat{p}_{T}$ > 2 GeV' },
+  { tag = "pth3", value = 3.0, label = '$\hat{p}_{T}$ > 3 GeV' },
+  { tag = "pth4", value = 4.0, label = '$\hat{p}_{T}$ > 4 GeV' },
+  { tag = "pth6", value = 6.0, label = '$\hat{p}_{T}$ > 6 GeV' },
+]
+
+[quantities.process]
+to     = { pythia = "Photon:ProcessType" }
+points = [
+  { tag = "allproc", value = 0, label = "resolved + direct" },
+  { tag = "resolved", value = 1, label = "resolved" },
+]
+
+[quantities.radius]
+to     = { "rivet/photo_eic" = "R" }
+points = [
+  { tag = "r04", value = 0.4, label = "R = 0.4" },
+  { tag = "r07", value = 0.7, label = "R = 0.7" },
+  { tag = "r10", value = 1.0, label = "R = 1.0" },
+]
+
+[quantities.replica]
+to     = { "pythia/seed" = true }
+points = [
+  { tag = "s1", value = 1, label = "seed 1" },
+  { tag = "s2", value = 2, label = "seed 2" },
+  { tag = "s3", value = 3, label = "seed 3" },
+]
+

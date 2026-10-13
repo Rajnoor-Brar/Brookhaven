@@ -75,3 +75,7 @@ reports/*
 __pycache__/
 !/Makefile
 # /Heimdall
+
+# The papers (literature/README.md lists them)
+literature/*
+!literature/README.md
